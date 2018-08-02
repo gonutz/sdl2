@@ -1,6 +1,14 @@
 package sdl
 
 const (
+	REVISION        = "hg-11914:f1084c419f33"
+	REVISION_NUMBER = 11914
+	MAJOR_VERSION   = 2
+	MINOR_VERSION   = 0
+	PATCHLEVEL      = 8
+)
+
+const (
 	INIT_TIMER          = 0x00000001
 	INIT_AUDIO          = 0x00000010
 	INIT_VIDEO          = 0x00000020 // automatically inits events subsystem
@@ -10,10 +18,82 @@ const (
 	INIT_EVENTS         = 0x00004000
 	INIT_NOPARACHUTE    = 0x00100000 // compatibility; this flag is ignored
 
-	INIT_EVERYTHING = INIT_TIMER | INIT_AUDIO | INIT_VIDEO | INIT_EVENTS | INIT_JOYSTICK | INIT_HAPTIC | INIT_GAMECONTROLLER
+	INIT_EVERYTHING = INIT_TIMER | INIT_AUDIO | INIT_VIDEO | INIT_EVENTS |
+		INIT_JOYSTICK | INIT_HAPTIC | INIT_GAMECONTROLLER
 )
 
-const TEXTEDITINGEVENT_TEXT_SIZE = 32
+const (
+	AUDIO_MASK_BITSIZE           = 0xFF
+	AUDIO_MASK_DATATYPE          = 1 << 8
+	AUDIO_MASK_ENDIAN            = 1 << 12
+	AUDIO_MASK_SIGNED            = 1 << 15
+	AUDIO_U8                     = 0x0008 // unsigned 8-bit samples
+	AUDIO_S8                     = 0x8008 // signed 8-bit samples
+	AUDIO_U16LSB                 = 0x0010 // unsigned 16-bit samples
+	AUDIO_S16LSB                 = 0x8010 // signed 16-bit samples
+	AUDIO_U16MSB                 = 0x1010 // as above, but big-endian byte order
+	AUDIO_S16MSB                 = 0x9010 // as above, but big-endian byte order
+	AUDIO_U16                    = AUDIO_U16LSB
+	AUDIO_S16                    = AUDIO_S16LSB
+	AUDIO_S32LSB                 = 0x8020 // 32-bit integer samples
+	AUDIO_S32MSB                 = 0x9020 // As above, but big-endian byte order
+	AUDIO_S32                    = AUDIO_S32LSB
+	AUDIO_F32LSB                 = 0x8120 // 32-bit floating point samples
+	AUDIO_F32MSB                 = 0x9120 // As above, but big-endian byte order
+	AUDIO_F32                    = AUDIO_F32LSB
+	AUDIO_U16SYS                 = AUDIO_U16LSB
+	AUDIO_S16SYS                 = AUDIO_S16LSB
+	AUDIO_S32SYS                 = AUDIO_S32LSB
+	AUDIO_F32SYS                 = AUDIO_F32LSB
+	AUDIO_ALLOW_FREQUENCY_CHANGE = 0x00000001
+	AUDIO_ALLOW_FORMAT_CHANGE    = 0x00000002
+	AUDIO_ALLOW_CHANNELS_CHANGE  = 0x00000004
+	AUDIO_ALLOW_ANY_CHANGE       = AUDIO_ALLOW_FREQUENCY_CHANGE |
+		AUDIO_ALLOW_FORMAT_CHANGE | AUDIO_ALLOW_CHANNELS_CHANGE
+	AUDIOCVT_MAX_FILTERS = 9
+	//#define SDL_LoadWAV(file, spec, audio_buf, audio_len) \
+	MIX_MAXVOLUME = 128
+)
+
+const (
+	LIL_ENDIAN = 1234
+	BIG_ENDIAN = 4321
+	BYTEORDER  = LIL_ENDIAN // Windows always is
+)
+
+const (
+	RELEASED                   = 0
+	PRESSED                    = 1
+	TEXTEDITINGEVENT_TEXT_SIZE = 32
+	TEXTINPUTEVENT_TEXT_SIZE   = 32
+	QUERY                      = -1
+	IGNORE                     = 0
+	DISABLE                    = 0
+	ENABLE                     = 1
+)
+
+const (
+	HAPTIC_CONSTANT     = 1 << 0
+	HAPTIC_SINE         = 1 << 1
+	HAPTIC_LEFTRIGHT    = 1 << 2
+	HAPTIC_TRIANGLE     = 1 << 3
+	HAPTIC_SAWTOOTHUP   = 1 << 4
+	HAPTIC_SAWTOOTHDOWN = 1 << 5
+	HAPTIC_RAMP         = 1 << 6
+	HAPTIC_SPRING       = 1 << 7
+	HAPTIC_DAMPER       = 1 << 8
+	HAPTIC_INERTIA      = 1 << 9
+	HAPTIC_FRICTION     = 1 << 10
+	HAPTIC_CUSTOM       = 1 << 11
+	HAPTIC_GAIN         = 1 << 12
+	HAPTIC_AUTOCENTER   = 1 << 13
+	HAPTIC_STATUS       = 1 << 14
+	HAPTIC_PAUSE        = 1 << 15
+	HAPTIC_POLAR        = 0
+	HAPTIC_CARTESIAN    = 1
+	HAPTIC_SPHERICAL    = 2
+	HAPTIC_INFINITY     = 4294967295
+)
 
 const (
 	SCANCODE_UNKNOWN            Scancode = 0
@@ -262,9 +342,8 @@ const (
 )
 
 // Keycode values
-
-const K_SCANCODE_MASK = 1 << 30
 const (
+	K_SCANCODE_MASK              = 1 << 30
 	K_UNKNOWN            Keycode = 0
 	K_RETURN                     = '\r'
 	K_ESCAPE                     = '\033'
@@ -508,6 +587,15 @@ const (
 )
 
 const (
+	KMOD_CTRL  = KMOD_LCTRL | KMOD_RCTRL
+	KMOD_SHIFT = KMOD_LSHIFT | KMOD_RSHIFT
+	KMOD_ALT   = KMOD_LALT | KMOD_RALT
+	KMOD_GUI   = KMOD_LGUI | KMOD_RGUI
+)
+
+const MAX_LOG_MESSAGE = 4096
+
+const (
 	SYSWM_UNKNOWN SYSWM_TYPE = iota
 	SYSWM_WINDOWS
 	SYSWM_X11
@@ -572,13 +660,6 @@ const (
 	RENDER_DEVICE_RESET      EventType = 0x2001
 	USEREVENT                EventType = 0x8000
 	LASTEVENT                EventType = 0xFFFF
-)
-
-// ShowCursor parameters
-const (
-	QUERY   = -1
-	DISABLE = 0
-	ENABLE  = 1
 )
 
 const (
@@ -673,6 +754,80 @@ const (
 	HINT_OPENGL_ES_DRIVER                         = "SDL_OPENGL_ES_DRIVER"
 	HINT_AUDIO_RESAMPLING_MODE                    = "SDL_AUDIO_RESAMPLING_MODE"
 	HINT_AUDIO_CATEGORY                           = "SDL_AUDIO_CATEGORY"
+)
+
+const (
+	JOYSTICK_AXIS_MAX = 32767
+	JOYSTICK_AXIS_MIN = -32768
+	HAT_CENTERED      = 0x00
+	HAT_UP            = 0x01
+	HAT_RIGHT         = 0x02
+	HAT_DOWN          = 0x04
+	HAT_LEFT          = 0x08
+	HAT_RIGHTUP       = HAT_RIGHT | HAT_UP
+	HAT_RIGHTDOWN     = HAT_RIGHT | HAT_DOWN
+	HAT_LEFTUP        = HAT_LEFT | HAT_UP
+	HAT_LEFTDOWN      = HAT_LEFT | HAT_DOWN
+)
+
+const (
+	BUTTON_LEFT   = 1
+	BUTTON_MIDDLE = 2
+	BUTTON_RIGHT  = 3
+	BUTTON_X1     = 4
+	BUTTON_X2     = 5
+	BUTTON_LMASK  = 1 << (BUTTON_LEFT - 1)
+	BUTTON_MMASK  = 1 << (BUTTON_MIDDLE - 1)
+	BUTTON_RMASK  = 1 << (BUTTON_RIGHT - 1)
+	BUTTON_X1MASK = 1 << (BUTTON_X1 - 1)
+	BUTTON_X2MASK = 1 << (BUTTON_X2 - 1)
+)
+
+const (
+	MUTEX_TIMEDOUT        = 1
+	MUTEX_MAXWAIT  uint32 = 0xFFFFFFFF
+)
+
+const (
+	ALPHA_OPAQUE      = 255
+	ALPHA_TRANSPARENT = 0
+)
+
+const (
+	RWOPS_UNKNOWN   = 0 // unknown stream type
+	RWOPS_WINFILE   = 1 // win32 file
+	RWOPS_STDFILE   = 2 // stdio file
+	RWOPS_JNIFILE   = 3 // android asset
+	RWOPS_MEMORY    = 4 // memory stream
+	RWOPS_MEMORY_RO = 5 // read-only memory stream
+	RW_SEEK_SET     = 0 // seek from the beginning of data
+	RW_SEEK_CUR     = 1 // seek relative to current read point
+	RW_SEEK_END     = 2 // seek relative to the end of data
+)
+
+const (
+	NONSHAPEABLE_WINDOW    = -1
+	INVALID_SHAPE_ARGUMENT = -2
+	WINDOW_LACKS_SHAPE     = -3
+)
+
+const (
+	WINDOWPOS_UNDEFINED_MASK = 0x1FFF0000
+	WINDOWPOS_CENTERED_MASK  = 0x2FFF0000
+)
+
+const (
+	SWSURFACE = 0          // just here for compatibility
+	PREALLOC  = 0x00000001 // surface uses preallocated memory
+	RLEACCEL  = 0x00000002 // surface is RLE encoded
+	DONTFREE  = 0x00000004 // surface is referenced internally
+)
+
+const TEST_MAX_LOGMESSAGE_LENGTH = 3584
+
+const (
+	ASSERT_FAIL = 0
+	ASSERT_PASS = 1
 )
 
 const (
@@ -959,3 +1114,31 @@ const (
 	WINDOWEVENT_TAKE_FOCUS
 	WINDOWEVENT_HIT_TEST
 )
+
+func AUDIO_BITSIZE(x AudioFormat) int {
+	return int(x & AUDIO_MASK_BITSIZE)
+}
+
+func AUDIO_ISFLOAT(x AudioFormat) bool {
+	return x&AUDIO_MASK_DATATYPE != 0
+}
+
+func AUDIO_ISBIGENDIAN(x AudioFormat) bool {
+	return x&AUDIO_MASK_ENDIAN != 0
+}
+
+func AUDIO_ISSIGNED(x AudioFormat) bool {
+	return x&AUDIO_MASK_SIGNED != 0
+}
+
+func AUDIO_ISINT(x AudioFormat) bool {
+	return !AUDIO_ISFLOAT(x)
+}
+
+func AUDIO_ISLITTLEENDIAN(x AudioFormat) bool {
+	return !AUDIO_ISBIGENDIAN(x)
+}
+
+func AUDIO_ISUNSIGNED(x AudioFormat) bool {
+	return !AUDIO_ISSIGNED(x)
+}
