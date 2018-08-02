@@ -8,7 +8,13 @@ type Window struct{}
 type Renderer struct{}
 type Surface struct{}
 type Texture struct{}
-type RWops struct{}
+type RWops struct {
+	size  uintptr
+	seek  uintptr
+	read  uintptr
+	write uintptr
+	close uintptr
+}
 
 // events
 
@@ -370,3 +376,5 @@ type PixelFormat struct {
 	Refcount      int32
 	Next          *PixelFormat
 }
+
+type AudioSpec struct{}

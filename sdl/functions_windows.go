@@ -72,6 +72,15 @@ var (
 	setWindowModalFor       = dll.NewProc("SDL_SetWindowModalFor")
 	setWindowOpacity        = dll.NewProc("SDL_SetWindowOpacity")
 	setWindowsMessageHook   = dll.NewProc("SDL_SetWindowsMessageHook")
+	getClipboardText        = dll.NewProc("SDL_GetClipboardText")
+	setClipboardText        = dll.NewProc("SDL_SetClipboardText")
+	hasClipboardText        = dll.NewProc("SDL_HasClipboardText")
+	loadWAV_RW              = dll.NewProc("SDL_LoadWAV_RW")
+	freeWAV                 = dll.NewProc("SDL_FreeWAV")
+	rwFromFile              = dll.NewProc("SDL_RWFromFile")
+	rwFromMem               = dll.NewProc("SDL_RWFromMem")
+	rwFromConstMem          = dll.NewProc("SDL_RWFromConstMem")
+	rwFromFP                = dll.NewProc("SDL_RWFromDP")
 )
 
 func GetError() error {
@@ -150,10 +159,10 @@ func CreateWindowAndRenderer(width, height int, flags uint) (*Window, *Renderer,
 		uintptr(unsafe.Pointer(&window)),
 		uintptr(unsafe.Pointer(&renderer)),
 	)
-	if ret != 0 {
-		return nil, nil, GetError()
+	if ret == 0 {
+		return (*Window)(unsafe.Pointer(window)), (*Renderer)(unsafe.Pointer(renderer)), nil
 	}
-	return (*Window)(unsafe.Pointer(window)), (*Renderer)(unsafe.Pointer(renderer)), nil
+	return nil, nil, GetError()
 }
 
 func CreateWindowFrom(data uintptr) (*Window, error) {
@@ -327,7 +336,7 @@ func (w *Window) GetData(name string) uintptr {
 
 func (w *Window) GetDisplayIndex() (int, error) {
 	ret, _, _ := getWindowDisplayIndex.Call(uintptr(unsafe.Pointer(w)))
-	if ret < 0 {
+	if int(ret) < 0 {
 		return -1, GetError()
 	}
 	return int(ret), nil
@@ -646,4 +655,212 @@ func (r *Rect) Empty() bool {
 func (r *Rect) Equals(s *Rect) bool {
 	return r != nil && s != nil &&
 		r.X == s.X && r.Y == s.Y && r.W == s.W && r.H == s.H
+}
+
+func GetClipboardText() string {
+	ret, _, _ := getClipboardText.Call()
+	return toGoString(ret)
+}
+
+func SetClipboardText(s string) error {
+	c := toSDLString(s)
+	ret, _, _ := setClipboardText.Call(uintptr(unsafe.Pointer(&c[0])))
+	if ret == 0 {
+		return nil
+	}
+	return GetError()
+}
+
+func HasClipboardText() bool {
+	ret, _, _ := hasClipboardText.Call()
+	return ret != 0
+}
+
+//#define SDL_LoadWAV(file, spec, audio_buf, audio_len) \
+//    SDL_LoadWAV_RW(SDL_RWFromFile(file, "rb"),1, spec,audio_buf,audio_len)
+func LoadWav(file string, spec *AudioSpec) (*WAV, *AudioSpec, error) {
+	ops, err := RWFromFile(file, "rb")
+	if err != nil {
+		return nil, nil, err
+	}
+	return LoadWAV_RW(ops, true, spec)
+}
+
+func LoadWAV_RW(src *RWops, freesrc bool, spec *AudioSpec) (*WAV, *AudioSpec, error) {
+	var wav WAV
+	ret, _, _ := loadWAV_RW.Call(
+		uintptr(unsafe.Pointer(src)),
+		toSDLBool(freesrc),
+		uintptr(unsafe.Pointer(spec)),
+		uintptr(unsafe.Pointer(&wav.buf)),
+		uintptr(unsafe.Pointer(&wav.len)),
+	)
+	if ret == 0 {
+		return nil, nil, GetError()
+	}
+	return &wav, (*AudioSpec)(unsafe.Pointer(ret)), nil
+}
+
+type WAV struct {
+	buf *uint8
+	len uint32
+}
+
+func (wav *WAV) Free() {
+	freeWAV.Call(uintptr(unsafe.Pointer(wav.buf)))
+}
+
+func RWFromFile(file, mode string) (*RWops, error) {
+	cFile := toSDLString(file)
+	cMode := toSDLString(mode)
+	ret, _, _ := rwFromFile.Call(
+		uintptr(unsafe.Pointer(&cFile[0])),
+		uintptr(unsafe.Pointer(&cMode[0])),
+	)
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func RWFromMem(mem unsafe.Pointer, size int) (*RWops, error) {
+	ret, _, _ := rwFromMem.Call(uintptr(mem), uintptr(size))
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func RWFromBytes(b []byte) (*RWops, error) {
+	ret, _, _ := rwFromMem.Call(
+		uintptr(unsafe.Pointer(&b[0])),
+		uintptr(len(b)),
+	)
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func RWFromConstMem(mem unsafe.Pointer, size int) (*RWops, error) {
+	ret, _, _ := rwFromConstMem.Call(uintptr(mem), uintptr(size))
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func RWFromConstBytes(b []byte) (*RWops, error) {
+	ret, _, _ := rwFromConstMem.Call(
+		uintptr(unsafe.Pointer(&b[0])),
+		uintptr(len(b)),
+	)
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func RWFromFP(fp unsafe.Pointer, autoClose bool) (*RWops, error) {
+	ret, _, _ := rwFromFP.Call(uintptr(fp), toSDLBool(autoClose))
+	if ret == 0 {
+		return nil, GetError()
+	}
+	return (*RWops)(unsafe.Pointer(ret)), nil
+}
+
+func (rw *RWops) Size() (int64, error) {
+	ret, _, _ := syscall.Syscall(rw.size, 1, uintptr(unsafe.Pointer(rw)), 0, 0)
+	size := int64(ret)
+	if size < -1 {
+		return size, GetError()
+	}
+	return size, nil
+}
+func (rw *RWops) Seek(offset int64, whence int) (int64, error) {
+	ret, _, _ := syscall.Syscall(
+		rw.seek, 3,
+		uintptr(unsafe.Pointer(rw)),
+		uintptr(offset),
+		uintptr(whence),
+	)
+	pos := int64(ret)
+	if pos == -1 {
+		return -1, GetError()
+	}
+	return pos, nil
+}
+
+func (rw *RWops) Tell() (int64, error) {
+	return rw.Seek(0, RW_SEEK_CUR)
+}
+
+func (rw *RWops) Read(dest unsafe.Pointer, size uint, maxnum uint) (uint, error) {
+	ret, _, _ := syscall.Syscall6(
+		rw.read, 4,
+		uintptr(unsafe.Pointer(rw)),
+		uintptr(dest),
+		uintptr(size),
+		uintptr(maxnum),
+		0, 0,
+	)
+	if ret == 0 {
+		return 0, GetError()
+	}
+	return uint(ret), nil
+}
+
+func (rw *RWops) ReadBytes(dest []byte) (uint, error) {
+	ret, _, _ := syscall.Syscall6(
+		rw.read, 4,
+		uintptr(unsafe.Pointer(rw)),
+		uintptr(unsafe.Pointer(&dest[0])),
+		uintptr(1),
+		uintptr(len(dest)),
+		0, 0,
+	)
+	if ret == 0 {
+		return 0, GetError()
+	}
+	return uint(ret), nil
+}
+
+func (rw *RWops) Write(src unsafe.Pointer, size uint, num uint) (uint, error) {
+	ret, _, _ := syscall.Syscall6(
+		rw.write, 4,
+		uintptr(unsafe.Pointer(rw)),
+		uintptr(src),
+		uintptr(size),
+		uintptr(num),
+		0, 0,
+	)
+	written := uint(ret)
+	if written < num {
+		return written, GetError()
+	}
+	return written, nil
+}
+
+func (rw *RWops) WriteBytes(b []byte) (uint, error) {
+	ret, _, _ := syscall.Syscall6(
+		rw.write, 4,
+		uintptr(unsafe.Pointer(rw)),
+		uintptr(unsafe.Pointer(&b[0])),
+		uintptr(1),
+		uintptr(len(b)),
+		0, 0,
+	)
+	written := uint(ret)
+	if written < uint(len(b)) {
+		return written, GetError()
+	}
+	return written, nil
+}
+
+func (rw *RWops) Close() error {
+	ret, _, _ := syscall.Syscall(rw.close, 1, uintptr(unsafe.Pointer(rw)), 0, 0)
+	if ret == 0 {
+		return nil
+	}
+	return GetError()
 }
